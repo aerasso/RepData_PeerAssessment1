@@ -1,32 +1,13 @@
-Reproducible Research: Peer Assessment 1
-========================================
-
-### By aerasso@stanfordalumni.org on September 2015.
-
-Throughout this report we always include the code used to generate the output.
-
+# -----------------------------------------------------------------------------
+#
+# Project 1 
+#
+# -----------------------------------------------------------------------------
 
 
-## Overview
+## Loading and preprocessing the data -----------------------------------------
+#
 
-This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
-
-## Loading and preprocessing the data
-The data for this assignment is downloaded from the course web site.
-Dataset: Activity monitoring data [52K]
-
-The variables included in this dataset are:
-
-* **steps**: Number of steps taking in a 5-minute interval (missing values are coded as NA)
-
-* **date**: The date on which the measurement was taken in YYYY-MM-DD format
-
-* **interval**: Identifier for the 5-minute interval in which measurement was taken
-
-The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
-
-```{r Loading and preprocessing the data, cache=FALSE}
-# <!-- rmarkdown v1 -->
 workdir<-getwd()
 
 fpath1 = file.path(workdir, "repdata-data-activity.zip")
@@ -60,16 +41,16 @@ if (!"dplyr" %in% rownames(installed.packages())){
 }
 library("dplyr")
 
-```
+## What are the mean and median of total number of steps taken per day? -------
 
-## What is mean total number of steps taken per day?
-We ignore the missing values in the dataset, for now.
-```{r Total daily steps}
 # Filtering dataset to obtain the required data
 
 dailysteps <- group_by(dataset, day)
 daily_total <- summarize(dailysteps, 
                 totday = sum(steps, na.rm = TRUE)) # Excludes NA values
+
+daily_mean <- mean(daily_total$totday, na.rm = TRUE) # Excludes NA values
+daily_median <- median(daily_total$totday, na.rm = TRUE) # Excludes NA values
 
 # Histogram
 par(mfrow = c(1, 1))  # Resetting layout
@@ -85,21 +66,16 @@ with(dailysteps, hist(daily_total$totday,
                    bg = "transparent"
                    
 )) 
-```
 
-The mean and median of the total number of steps taken every day are, respectively:
+library(ggplot2)
+plotTitle<- "Total Number of Steps Taken Each Day\n"
+g <- ggplot(data = as.data.frame(daily_total$totday), aes(x = daily_total$totday, fill="Frequency"), ylab=NULL) 
+g <- g + labs(title=plotTitle, x="Number of Steps") 
+g <- g + geom_histogram(binwidth=500, colour = "orange")
+g
 
-```{r Daily mean and median}
-daily_mean <- mean(daily_total$totday, na.rm = TRUE) # Excludes NA values
-daily_median <- median(daily_total$totday, na.rm = TRUE) # Excludes NA values
-daily_mean 
-daily_median
-```
+# What is the average daily activity pattern? --------------------------------- 
 
-## What is the average daily activity pattern?
-We count the number of steps for each of the 5 minute intervals. Intervals are identified using the convention "xxyy"" where xx means the hours and yy the minutes at start time. For example, 1345 means 13:45 or 1:45 PM.
-
-```{r Average daily pattern}
 # Filtering dataset to obtain the required data
 
 intersteps <- group_by(dataset, interval)
@@ -123,37 +99,33 @@ with(intersteps, {plot(avg_daily_pattern$interval,avg_daily_pattern$mean_interva
                
                lines(avg_daily_pattern$interval,avg_daily_pattern$mean_interval)}
 )
-```
 
-The maximum number of steps for all 5-minute intervals, on average across all the days in the dataset, is:
-
-```{r Max number steps}
 max(avg_daily_pattern$mean_interval)
-```
-It happens during the interval that starts at:
-```{r Interval with max number steps}
 max_interval <- avg_daily_pattern[avg_daily_pattern$mean_interval==max(avg_daily_pattern$mean_interval), 1]
-as.numeric(max_interval)
-```
+as.numeric(max_interval)                                           
 
-## Inputing missing values
-The total number of missing values is
-```{r Total missing values}
+# Inputing missing values -----------------------------------------------------
+#
+
 # Total number of missing values
+
 complete<-complete.cases(dataset$steps)
 num_missing_val <-length(dataset$steps) - sum(complete)
 num_missing_val
-```
+# Filling out missing values. Assigns mean number of steps for each 5 minute interval to every missing value
 
-Now we assign the mean number of steps for each 5 minute interval to every missing value to enrich the data set.
-```{r Inputting missing values}
-# Filling out missing values by assigning the mean number of steps for each 5 minute interval to every missing value.
 # Solution is to add a new column instead of replacing the old column with the original values
+
 new_dataset<- mutate(dataset, all_steps = ifelse(is.na(dataset$steps), avg_daily_pattern$mean_interval, dataset$steps))
        
 new_dailysteps <- group_by(new_dataset, day)
 new_daily_total <- summarize(new_dailysteps, 
                          totday = sum(all_steps, na.rm = TRUE)) # Excludes NA values
+
+new_daily_mean <- mean(new_daily_total$totday, na.rm = TRUE) # Excludes NA values
+new_daily_median <- median(new_daily_total$totday, na.rm = TRUE) # Excludes NA values
+
+
 # Histogram
 par(mfrow = c(1, 1))  # Resetting layout
 his_break <- seq(0,25000,500)
@@ -166,26 +138,16 @@ with(dailysteps, hist(new_daily_total$totday,
                       cex.axis=0.75,
                       cex.lab=0.75,
                       bg = "transparent"
+                      
 )) 
-```
 
-The new mean and median of the total number of steps taken every day are, respectively:
+# Are there differences in activity patterns between weekdays and weekends? ---
 
-```{r New mean and median}
-new_daily_mean <- mean(new_daily_total$totday, na.rm = TRUE) # Excludes NA values
-new_daily_median <- median(new_daily_total$totday, na.rm = TRUE) # Excludes NA values
-new_daily_mean
-new_daily_median
-```
-The impact of adding new values to the data set is that the mean and the median are now the same, and the shape of the histogram is mores ymmetrical and shifted towards higher values for the total number of steps per day.
 
-## Are there differences in activity patterns between weekdays and weekends?
-Next, we determine the differences between the total number of steps taken during weekdays and during weekends 
-
-```{r Weeday and weekend patterns}
 new_dataset<-mutate(new_dataset, type_of_day = ifelse(weekday=="Saturday"|weekday=="Saturday","week_end","week_day"))
 
 library(lattice)
+
 new_intersteps <- group_by(new_dataset, interval,type_of_day)
 avg_type_of_day_pattern <- summarize(new_intersteps,
                                mean_interval = mean(all_steps, na.rm = TRUE))
@@ -195,6 +157,3 @@ xyplot(mean_interval ~ interval | type_of_day, data = avg_type_of_day_pattern, l
        xlab="Five Minute Interval",
        ylab="Average Number of Steps",
        ) 
-```
-
-Weekends show more steps over a longer part of the day, from 5:00 AM to 9:00 PM than weekdays, when activity decreases markedly after 10:00 AM. It seems that the sample subject exercises or has more phisical activity after noon on Saturday and Sunday than on the other days.
